@@ -1,0 +1,72 @@
+
+①  在app中使用butterKnife只需要在build.gradle中添加如下依赖即可
+  dependencies {
+    compile 'com.jakewharton:butterknife:8.5.1'
+    annotationProcessor 'com.jakewharton:butterknife-compiler:8.5.1'
+  }
+
+②即使在app中依赖了library(该library依赖了butterKnife)，在app的build.gradle中也必须再次添加对注解解析器的依赖
+ //    compile 'com.jakewharton:butterknife:8.5.1'
+     annotationProcessor 'com.jakewharton:butterknife-compiler:8.5.1'
+
+
+③ butterKnife在library中也能使用,要注意正确的使用方式
+  ->   Now make sure you use R2 instead of R inside all Butter Knife annotations.
+            把@BindView注解成员的R用R2替换，最后同步一下即可。
+ @BindView(R2.id.tv)
+    TextView tv;
+    @BindView(R2.id.tv2_lib)
+    TextView tv2;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.lib_main);
+        ButterKnife.bind(this);
+    }
+
+
+  -> 不过为view添加事件监听会出错,id值不对应。
+   04-06 07:20:38.754 12537-12537/com.gaos.butapp I/id: onClick: id = 2131427416
+   04-06 07:20:38.754 12537-12537/com.gaos.butapp I/id: onClick: R2.id.tv = 2131427414
+   04-06 07:20:38.754 12537-12537/com.gaos.butapp I/id: onClick: R2.id.tv2_lib = 2131427415
+     ->  为了应对以上问题，我们这么做：用butterKnife自动生成view事件监听，然后用alt+enter实现convert switch-case to if-else
+       最后再把@OnClick注解成员的R用R2代替，最后同步一下。
+        @OnClick({R2.id.tv, R2.id.tv2_lib})
+           public void onClick(View view) {
+               int i = view.getId();
+               if (i == R.id.tv) {
+                   Toast.makeText(this, "tvlib", Toast.LENGTH_SHORT).show();
+               } else if (i == R.id.tv2_lib) {
+                   Toast.makeText(this, "tv2lib", Toast.LENGTH_SHORT).show();
+               }
+           }
+
+      ->某同志遇到了同样的问题,下面是他的解决方案
+        http://www.jianshu.com/p/b0bfa3611b86
+
+        ->为啥在library中使用butterKnife遇到了问题呢？
+        http://tools.android.com/tips/non-constant-fields
+
+  ④ 在library中依赖butterKnife需要在①的基础上，再在project中添加
+  ->To use Butter Knife in a library, add the plugin to your buildscript:
+  buildscript {
+    repositories {
+      mavenCentral()
+     }
+    dependencies {
+      classpath 'com.jakewharton:butterknife-gradle-plugin:8.5.1'
+    }
+  }
+  ->and then apply it in your module:
+  apply plugin: 'com.android.library'
+  apply plugin: 'com.jakewharton.butterknife'
+
+  -> Now make sure you use R2 instead of R inside all Butter Knife annotations.
+  class ExampleActivity extends Activity {
+    @BindView(R2.id.user) EditText username;
+    @BindView(R2.id.pass) EditText password;
+  ...
+  }
+
+
